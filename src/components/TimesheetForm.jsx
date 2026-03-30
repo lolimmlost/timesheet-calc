@@ -125,7 +125,6 @@ const TimesheetForm = ({
     // Don't trigger auto-save when setting from props
     isUserChangeRef.current = false;
     setTimesheetData(initialData);
-    setExpandedDay(null);
   }, [initialData]);
 
   // Handle name change
@@ -177,6 +176,7 @@ const TimesheetForm = ({
   // Handle clear action
   const handleClearAll = () => {
     if (onClear) {
+      setExpandedDay(null);
       onClear();
     }
   };
