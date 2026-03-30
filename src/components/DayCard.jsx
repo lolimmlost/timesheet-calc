@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp, Moon, Clock } from 'lucide-react';
 import {
   calculateDailyHours,
@@ -21,6 +21,12 @@ const DayCard = ({
   onToggleExpand
 }) => {
   const cardRef = useRef(null);
+  const startMinuteRef = useRef(null);
+  const endMinuteRef = useRef(null);
+  const breakMinuteRef = useRef(null);
+
+  // Track which minute fields are focused for display formatting
+  const [focusedField, setFocusedField] = useState(null);
 
   const {
     startHour,
@@ -70,23 +76,25 @@ const DayCard = ({
     onDayChange(day, field, value);
   };
 
-  // Parse hour input - accepts 1-12, auto-validates
-  const handleHourInput = (field, value) => {
-    // Allow empty
+  const selectAll = (e) => setTimeout(() => e.target.select(), 0);
+
+  // Parse hour input - accepts 1-12, auto-advances to minute field
+  const handleHourInput = (field, value, minuteFieldRef) => {
     if (value === '') {
       handleFieldChange(field, '');
       return;
     }
-    // Only allow numbers
     const num = value.replace(/\D/g, '');
     if (num === '') return;
 
     const parsed = parseInt(num);
-    // Allow 1-12
     if (parsed >= 1 && parsed <= 12) {
       handleFieldChange(field, parsed.toString());
+      // Auto-advance after definitive entry
+      if (num.length >= 2 || parsed > 1) {
+        minuteFieldRef?.current?.focus();
+      }
     } else if (parsed > 12 && parsed <= 99) {
-      // If they type something like 13, just take the last digit if valid
       const lastDigit = parsed % 10;
       if (lastDigit >= 1 && lastDigit <= 9) {
         handleFieldChange(field, lastDigit.toString());
@@ -121,6 +129,9 @@ const DayCard = ({
     const parsed = parseInt(num);
     if (parsed >= 0 && parsed <= 23) {
       handleFieldChange('breakHours', parsed.toString());
+      if (num.length >= 2 || parsed > 2) {
+        breakMinuteRef.current?.focus();
+      }
     }
   };
 
@@ -137,6 +148,20 @@ const DayCard = ({
     if (parsed >= 0 && parsed <= 59) {
       handleFieldChange('breakMinutes', parsed.toString());
     }
+  };
+
+  // Display helpers: raw when focused, formatted when blurred
+  const minuteDisplay = (value, fieldName) => {
+    if (focusedField === fieldName) {
+      return value === '0' || value === '00' ? '' : (value || '');
+    }
+    const v = value || '0';
+    return v === '0' || v === '00' ? '00' : v.toString().padStart(2, '0');
+  };
+
+  const breakHoursDisplay = () => {
+    if (focusedField === 'breakHours') return breakHours === '0' ? '' : (breakHours || '');
+    return breakHours || '0';
   };
 
   // Time display helpers
@@ -220,7 +245,8 @@ const DayCard = ({
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={startHour}
-                  onChange={(e) => handleHourInput('startHour', e.target.value)}
+                  onChange={(e) => handleHourInput('startHour', e.target.value, startMinuteRef)}
+                  onFocus={(e) => selectAll(e)}
                   placeholder="H"
                   className={`
                     w-16 h-12 px-3 rounded-lg border-2 text-center text-lg font-medium
@@ -231,11 +257,14 @@ const DayCard = ({
                 />
                 <span className="text-xl text-gray-400 font-bold">:</span>
                 <input
+                  ref={startMinuteRef}
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  value={startMinute === '0' ? '00' : (startMinute || '').toString().padStart(2, '0')}
+                  value={minuteDisplay(startMinute, 'startMinute')}
                   onChange={(e) => handleMinuteInput('startMinute', e.target.value)}
+                  onFocus={(e) => { setFocusedField('startMinute'); selectAll(e); }}
+                  onBlur={() => setFocusedField(null)}
                   placeholder="MM"
                   className={`
                     w-16 h-12 px-3 rounded-lg border-2 text-center text-lg font-medium
@@ -287,7 +316,8 @@ const DayCard = ({
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={endHour}
-                  onChange={(e) => handleHourInput('endHour', e.target.value)}
+                  onChange={(e) => handleHourInput('endHour', e.target.value, endMinuteRef)}
+                  onFocus={(e) => selectAll(e)}
                   placeholder="H"
                   className={`
                     w-16 h-12 px-3 rounded-lg border-2 text-center text-lg font-medium
@@ -298,11 +328,14 @@ const DayCard = ({
                 />
                 <span className="text-xl text-gray-400 font-bold">:</span>
                 <input
+                  ref={endMinuteRef}
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  value={endMinute === '0' ? '00' : (endMinute || '').toString().padStart(2, '0')}
+                  value={minuteDisplay(endMinute, 'endMinute')}
                   onChange={(e) => handleMinuteInput('endMinute', e.target.value)}
+                  onFocus={(e) => { setFocusedField('endMinute'); selectAll(e); }}
+                  onBlur={() => setFocusedField(null)}
                   placeholder="MM"
                   className={`
                     w-16 h-12 px-3 rounded-lg border-2 text-center text-lg font-medium
@@ -352,8 +385,10 @@ const DayCard = ({
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  value={breakHours}
+                  value={breakHoursDisplay()}
                   onChange={(e) => handleBreakHourInput(e.target.value)}
+                  onFocus={(e) => { setFocusedField('breakHours'); selectAll(e); }}
+                  onBlur={() => setFocusedField(null)}
                   placeholder="0"
                   className={`
                     w-16 h-12 px-3 rounded-lg border-2 text-center text-lg font-medium
@@ -364,11 +399,14 @@ const DayCard = ({
                 />
                 <span className="text-sm text-gray-500 font-medium">hrs</span>
                 <input
+                  ref={breakMinuteRef}
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  value={breakMinutes}
+                  value={minuteDisplay(breakMinutes, 'breakMinutes')}
                   onChange={(e) => handleBreakMinuteInput(e.target.value)}
+                  onFocus={(e) => { setFocusedField('breakMinutes'); selectAll(e); }}
+                  onBlur={() => setFocusedField(null)}
                   placeholder="0"
                   className={`
                     w-16 h-12 px-3 rounded-lg border-2 text-center text-lg font-medium
