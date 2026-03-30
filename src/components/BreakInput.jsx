@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 
 /**
  * BreakInput component for entering break duration
- * Uses text inputs for quick typing
+ * Uses text inputs with smart focus/blur formatting
  */
 const BreakInput = ({
   hours,
@@ -14,6 +14,12 @@ const BreakInput = ({
   label,
   ariaLabel
 }) => {
+  const [hoursFocused, setHoursFocused] = useState(false);
+  const [minutesFocused, setMinutesFocused] = useState(false);
+  const minutesRef = useRef(null);
+
+  const selectAll = (e) => e.target.select();
+
   // Parse hours input - accepts 0-23
   const handleHoursInput = (value) => {
     if (value === '') {
@@ -26,6 +32,10 @@ const BreakInput = ({
     const parsed = parseInt(num);
     if (parsed >= 0 && parsed <= 23) {
       onHoursChange(parsed.toString());
+      // Auto-advance to minutes after definitive entry
+      if (num.length >= 2 || parsed > 2) {
+        minutesRef.current?.focus();
+      }
     }
   };
 
@@ -42,6 +52,18 @@ const BreakInput = ({
     if (parsed >= 0 && parsed <= 59) {
       onMinutesChange(parsed.toString());
     }
+  };
+
+  // Display helpers: show empty when focused and value is zero, padded when blurred
+  const hoursDisplay = () => {
+    if (hoursFocused) return hours === '0' ? '' : (hours || '');
+    return hours || '0';
+  };
+
+  const minutesDisplay = () => {
+    if (minutesFocused) return minutes === '0' || minutes === '00' ? '' : (minutes || '');
+    const val = minutes || '0';
+    return val === '0' || val === '00' ? '00' : val.toString().padStart(2, '0');
   };
 
   const inputClasses = `
@@ -71,8 +93,10 @@ const BreakInput = ({
           type="text"
           inputMode="numeric"
           pattern="[0-9]*"
-          value={hours}
+          value={hoursDisplay()}
           onChange={(e) => handleHoursInput(e.target.value)}
+          onFocus={(e) => { setHoursFocused(true); setTimeout(() => e.target.select(), 0); }}
+          onBlur={() => setHoursFocused(false)}
           disabled={disabled}
           placeholder="0"
           className={inputClasses}
@@ -83,11 +107,14 @@ const BreakInput = ({
 
         {/* Minutes input */}
         <input
+          ref={minutesRef}
           type="text"
           inputMode="numeric"
           pattern="[0-9]*"
-          value={minutes}
+          value={minutesDisplay()}
           onChange={(e) => handleMinutesInput(e.target.value)}
+          onFocus={(e) => { setMinutesFocused(true); setTimeout(() => e.target.select(), 0); }}
+          onBlur={() => setMinutesFocused(false)}
           disabled={disabled}
           placeholder="0"
           className={inputClasses}
