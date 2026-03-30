@@ -118,9 +118,14 @@ const TimesheetForm = ({
 
   // Update data when initial data changes (from parent, e.g., after clear)
   useEffect(() => {
+    // Cancel any pending debounced save so it doesn't overwrite the fresh data
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
     // Don't trigger auto-save when setting from props
     isUserChangeRef.current = false;
     setTimesheetData(initialData);
+    setExpandedDay(null);
   }, [initialData]);
 
   // Handle name change
